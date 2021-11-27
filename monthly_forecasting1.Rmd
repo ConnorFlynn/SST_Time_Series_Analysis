@@ -1,0 +1,187 @@
+---
+title: "Monthly Forecasting"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(lubridate)
+library(forecast)
+library(MLmetrics)
+library(tsibble)
+library(astsa)
+library(janitor)
+library(feasts)
+```
+
+```{r}
+sst_honolii_1985_2021 <- read.csv(here("data", "sst_honolii_1985_2021.csv" ))
+sst_honolii_1985_2021
+```
+```{r}
+sst_honolii_1985_2021 <- sst_honolii_1985_2021 %>% 
+  select(time, CRW_SST)
+
+sst_honolii_1985_2021
+```
+
+
+```{r}
+sst_honolii_1985_2021 <- sst_honolii_1985_2021 %>%
+mutate(time = as.Date(time))
+sst_honolii_1985_2021
+```
+
+```{r}
+months(sst_honolii_1985_2021$time)
+```
+
+
+```{r}
+sst_honolii_1985_2021_month <- sst_honolii_1985_2021 %>% 
+  mutate(time = floor_date(time, "month")) %>% 
+  group_by(time) %>% 
+  summarise(mean_sst = mean(CRW_SST))
+
+sst_honolii_1985_2021_month
+```
+```{r}
+
+sst_honolii_1985_2021_month_plot <- ggplot(data = sst_honolii_1985_2021_month, aes(x = time, y = mean_sst)) +
+  geom_line()
+
+sst_honolii_1985_2021_month_regression <- sst_honolii_1985_2021_month_plot +
+  geom_smooth(method="lm", col="black")
+
+sst_honolii_1985_2021_month_regression
+
+```
+
+```{r}
+sst_honolii_1985_2021_month_ts <- ts(sst_honolii_1985_2021_month$mean_sst, start = c(1985, 11), frequency = 12)
+
+sst_honolii_1985_2021_month_ts
+```
+
+```{r}
+training=window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2018,11))
+validation=window(sst_honolii_1985_2021_month_ts, start = c(2018,12), end = c(2021,10))
+```
+
+```{r}
+naive = snaive(training, h=length(validation))
+MAPE(naive$mean, validation) * 100
+```
+
+```{r}
+plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="Seasonal Naive Forecast", type='l')
+lines(naive$mean, col="red", lwd=2)
+```
+
+```{r}
+ets_model = ets(training, allow.multiplicative.trend = TRUE)
+summary(ets_model)
+
+ets_forecast = forecast(ets_model, h=length(validation))
+MAPE(ets_forecast$mean, validation) *100
+
+ets_plot <-plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="Seasonal Naive Forecast", type='l')
+lines(ets_forecast$mean, col="red", lwd=2)
+```
+
+
+
+
+
+
+```{r}
+dshw_model = dshw(training, period1=4, period2 = 12, h=84)
+MAPE(dshw_model$mean, validation)*100
+
+dshw_plot <-plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="DSHW Forecast", type='l')
+lines(dshw_model$mean, col="red", lwd=2)
+```
+```{r}
+
+dshw_model_2 = dshw(training, period1=6, period2 = 12, h = 60)
+
+dshw_model_2
+
+fcst_dshw <- forecast(dshw_model_2, h = 50)
+autoplot(fcst_dshw, include = 220)
+print(summary(fcst_dshw))
+
+```
+
+
+```{r}
+tbats_model = tbats(training)
+tbats_forecast = forecast(tbats_model, h=length(validation))
+MAPE(tbats_forecast$mean, validation) * 100
+
+tbats_plot <-plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="Seasonal Naive Forecast", type='l')
+lines(tbats_forecast$mean, col="red", lwd=2)
+```
+
+```{r}
+arima_optimal = auto.arima(training)
+arima_optimal
+```
+
+
+```{r}
+library(astsa)
+sarima_forecast = sarima.for(training, n.ahead=length(validation),
+                              p=1,d=0,q=2,P=0,D=1,Q=1,S=12)
+MAPE(sarima_forecast$pred, validation) * 100
+
+sarima_plot <-plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="Seasonal Naive Forecast", type='l')
+lines(sarima_forecast$pred, col="red", lwd=2)
+```
+
+
+```{r}
+fit_arima <- auto.arima(training, d = 1, D = 1, stepwise = FALSE, approximation = FALSE, trace = TRUE)
+print(summary(fit_arima))
+checkresiduals(fit_arima)
+```
+
+```{r}
+fcst <- forecast(fit_arima, h = 120)
+autoplot(fcst, include = 180)
+print(summary(fcst))
+```
+
+
+```{r}
+arima_training <- window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2021,11))
+
+fit_arima_training <- auto.arima(arima_training, d = 1, D = 1, stepwise = FALSE, approximation = FALSE, trace = TRUE)
+print(summary(fit_arima_training))
+checkresiduals(fit_arima_training)
+```
+
+
+```{r}
+fcst_arima <- forecast(fit_arima_training, h = 60)
+autoplot(fcst, include = 60)
+print(summary(fcst))
+```
+
+
+```{r}
+as_tsibble(sst_honolii_1985_2021_month_ts) %>%
+  model(
+    classical_decomposition(value, type = "additive")
+  ) %>%
+  components() %>%
+  autoplot() +
+  labs(title = "Classical additive decomposition")
+```
+
