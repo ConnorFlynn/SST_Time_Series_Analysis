@@ -1,0 +1,88 @@
+---
+title: "Blog"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# load in libraries, amke sure all are needed
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(lubridate)
+library(forecast)
+library(MLmetrics)
+library(tsibble)
+library(astsa)
+library(janitor)
+library(feasts)
+```
+
+Load in Honolii Sea Surface Temperature Data using here package
+
+```{r}
+sst_honolii_1985_2021 <- read.csv(here("data", "sst_honolii_1985_2021.csv" ))
+sst_honolii_1985_2021
+```
+
+
+Clean Data
+
+```{r}
+sst_honolii_1985_2021 <- sst_honolii_1985_2021 %>% 
+  select(time, CRW_SST) %>% 
+  mutate(time = as.Date(time))
+sst_honolii_1985_2021
+```
+
+Determine SST Monthly Means
+```{r}
+sst_honolii_1985_2021_month <- sst_honolii_1985_2021 %>% 
+  mutate(time = floor_date(time, "month")) %>% 
+  group_by(time) %>% 
+  summarise(mean_sst = mean(CRW_SST))
+
+sst_honolii_1985_2021_month
+```
+
+Plot Data
+
+```{r}
+sst_honolii_1985_2021_month_plot <- ggplot(data = sst_honolii_1985_2021_month, aes(x = time, y = mean_sst)) +
+  geom_line()
+
+sst_honolii_1985_2021_month_plot
+```
+
+Look for trend using a linear regression
+
+```{r}
+sst_honolii_1985_2021_month_regression <- sst_honolii_1985_2021_month_plot +
+  geom_smooth(method="lm", col="black")
+
+sst_honolii_1985_2021_month_regression
+```
+
+Convert dataframe into a time series
+```{r}
+sst_honolii_1985_2021_month_ts <- ts(sst_honolii_1985_2021_month$mean_sst, start = c(1985, 11), frequency = 12)
+
+sst_honolii_1985_2021_month_ts
+```
+
+
+Run a classical decomposition model
+
+```{r}
+as_tsibble(sst_honolii_1985_2021_month_ts) %>%
+  model(
+    classical_decomposition(value, type = "additive")
+  ) %>%
+  components() %>%
+  autoplot() +
+  labs(title = "Classical additive decomposition")
+```
+
+```{r}
+acf(as_tsibble(sst_honolii_1985_2021_month_ts), lag.max = 12)
+```
