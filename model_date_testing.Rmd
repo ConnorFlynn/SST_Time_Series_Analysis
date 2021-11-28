@@ -155,8 +155,8 @@ checkresiduals(fit_arima_training)
 
 
 ```{r}
-fcst_arima <- forecast(fit_arima_training, h = 146)
-autoplot(fcst_arima, include = 60)
+fcst_arima <- forecast(fit_arima_training, h = 146, find.frequency = TRUE)
+autoplot(fcst_arima, include = 120)
 print(summary(fcst_arima))
 ```
 
@@ -173,7 +173,8 @@ print(summary(fcst_dshw_5))
 ```
 
 ```{r}
-fit_ets <- ets(sst_honolii_1985_2021_month_ts) 
+fit_ets <- ets(sst_honolii_1985_2021_month_ts, 
+               allow.multiplicative.trend = TRUE) 
 print(summary(fit_ets))
 checkresiduals(fit_ets)
 ```

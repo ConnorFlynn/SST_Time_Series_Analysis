@@ -70,8 +70,8 @@ sst_honolii_1985_2021_month_ts
 ```
 
 ```{r}
-training=window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2017,11))
-validation=window(sst_honolii_1985_2021_month_ts, start = c(2017,12), end = c(2021,10))
+training=window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2018,11))
+validation=window(sst_honolii_1985_2021_month_ts, start = c(2018,12), end = c(2021,10))
 ```
 
 ```{r}
