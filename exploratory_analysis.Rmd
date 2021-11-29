@@ -1,0 +1,248 @@
+---
+title: "exploratory_analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(lubridate)
+library(forecast)
+library(MLmetrics)
+library(tsibble)
+library(astsa)
+library(janitor)
+library(feasts)
+library(gt)
+library(modelr)
+library(astsa)
+```
+
+
+
+Load in Honolii Sea Surface Temperature Data using here package
+
+```{r, results='hide'}
+sst_honolii_1985_2021 <- read.csv(here("data", "sst_honolii_1985_2021.csv" ))
+sst_honolii_1985_2021
+```
+
+
+Clean Data
+
+```{r, results='hide'}
+sst_honolii_1985_2021 <- sst_honolii_1985_2021 %>% 
+  select(time, CRW_SST) %>% 
+  mutate(time = as.Date(time))
+sst_honolii_1985_2021
+```
+
+Determine SST Monthly Means
+```{r, results='hide'}
+sst_honolii_1985_2021_month <- sst_honolii_1985_2021 %>% 
+  mutate(time = floor_date(time, "month")) %>% 
+  group_by(time) %>% 
+  summarise(mean_sst = mean(CRW_SST))
+
+sst_honolii_1985_2021_month
+```
+
+Plot Data
+
+```{r}
+sst_honolii_1985_2021_month_plot <- ggplot(data = sst_honolii_1985_2021_month, aes(x = time, y = mean_sst)) +
+  geom_line()
+
+sst_honolii_1985_2021_month_plot
+```
+
+To estimate the linear relationship between time and mean sea surface temperature, we’ll use lm() to fit a regression model using Ordinary Least Squares (OLS).
+
+```{r}
+lm(mean_sst ~ time, data = sst_honolii_1985_2021_month) %>% 
+  tidy %>% 
+  gt()
+```
+
+
+Use the geom_smooth() function with method argument set to lm, which stands for “linear model”, to add the best fit OLS line to the sst_honolii_1985_2021_month_plot
+```{r}
+sst_honolii_1985_2021_month_regression <- sst_honolii_1985_2021_month_plot +
+  geom_smooth(method="lm", col="black")
+
+sst_honolii_1985_2021_month_regression
+```
+```{r}
+ols <- lm(mean_sst ~ time, data = sst_honolii_1985_2021_month)
+ols
+summary(ols)
+
+predictions <- sst_honolii_1985_2021_month %>% 
+  add_predictions(ols) %>%
+  mutate(residuals = mean_sst-pred)
+
+# histogram
+ggplot(data=predictions) + geom_histogram(aes(residuals), bins=25)
+
+# mean
+mean(predictions$residuals)
+#1.495545e-14
+
+# variance in residuals against measn_sst
+ggplot(predictions) + geom_point(aes(x=mean_sst, y=residuals)) 
+
+```
+
+
+
+
+
+Convert dataframe into a time series
+```{r, results='hide'}
+sst_honolii_1985_2021_month_ts <- ts(sst_honolii_1985_2021_month$mean_sst, start = c(1985, 11), frequency = 12)
+
+sst_honolii_1985_2021_month_ts
+```
+
+
+Convert time series into a tsibble to run more analysis
+
+```{r}
+sst_honolii_1985_2021_month_tsibble <- sst_honolii_1985_2021_month_ts %>% as_tsibble() 
+sst_honolii_1985_2021_month_tsibble
+```
+
+
+Run a classical decomposition model
+
+```{r}
+sst_honolii_1985_2021_month_tsibble %>%
+  model(
+    classical_decomposition(value, type = "additive")
+  ) %>%
+  components() %>%
+  autoplot() +
+  labs(title = "Classical additive decomposition")
+```
+
+
+View the trend line on the data
+
+
+```{r}
+dcmp <- sst_honolii_1985_2021_month_tsibble %>%
+  model(stl = STL(value))
+components(dcmp)
+
+components(dcmp) %>%
+  as_tsibble() %>%
+  autoplot(value, colour="gray") +
+  geom_line(aes(y=trend), colour = "#D55E00")
+```
+
+
+
+An alternative plot that emphasizes the seasonal patterns is where the data for each season are collected together in separate mini time plots.
+
+```{r}
+sst_honolii_1985_2021_month_tsibble %>% 
+  gg_subseries(value)
+```
+
+
+Forecasting
+
+Set up training and validation time periods
+
+```{r}
+training=window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2016,11))
+validation=window(sst_honolii_1985_2021_month_ts, start = c(2016,11), end = c(2021,10))
+```
+
+DSHW Model
+NOTE try to increase periods without messing up time
+```{r}
+dshw_model = dshw(training, period1=4, period2=12, h=length(validation))
+MAPE(dshw_model$mean, validation)*100
+
+dshw_model
+
+dshw_plot <-plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="DSHW Fit", type='l')
+lines(dshw_model$mean, col="red", lwd=2)
+```
+NOTE figure out how to expand x axis to show forecast years to 2030
+```{r}
+dshw_model_forecast = dshw(training, period1=4, period2 = 12, h=240)
+MAPE(dshw_model_forecast$mean, validation)*100
+
+dshw_model_forecast
+
+dshw_plot <-plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="DSHW Forecast", type='l')
+lines(dshw_model_forecast$mean, col="red", lwd=2)
+```
+
+ARIMA 
+
+```{r}
+#arima_training <- window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2018,11))
+
+fit_arima_training <- auto.arima(training, d = 1, D = 1, stepwise = FALSE, approximation = FALSE, trace = TRUE)
+print(summary(fit_arima_training))
+checkresiduals(fit_arima_training)
+```
+
+
+```{r}
+sarima_forecast = sarima.for(training, n.ahead=length(validation),
+                              p=1,d=1,q=1,P=2,D=1,Q=1,S=12)
+MAPE(sarima_forecast$pred, validation) * 100
+
+sarima_plot <-plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="SARIMA Fit", type='l')
+lines(sarima_forecast$pred, col="red", lwd=2)
+```
+
+```{r}
+fcst_arima <- forecast(fit_arima_training, h = 146, find.frequency = TRUE)
+autoplot(fcst_arima, include = 120)
+print(summary(fcst_arima))
+```
+
+One Step Ahead Sarima
+
+NOTE doesn't run
+
+```{r}
+one_step_ahead_sarima = matrix(ncol = 2, nrow = 60)
+for (i in 1:60){
+  
+  training_observed = window(data, start = c(1985,11), end = c(2016,(11+i)), frequency = 12)
+  
+  forecasted.sarima = sarima.for(training_observed,n.ahead=1,p=1,d=1,q=1,P=2,D=1,Q=1,S=12)
+  
+  demandforecast = forecasted.sarima$pred
+  observed = validation[[i]]
+  
+  one_step_ahead_sarima[i,1]= observed
+  one_step_ahead_sarima[i,2]= demandforecast
+}
+```
+
+
+Capturing more than one year seasonality (period2=72)
+
+NOTE the time element of the model changes 
+
+```{r}
+dshw_model_2 = dshw(sst_honolii_1985_2021_month_ts, period1=4, period2 =72, h = 120)
+
+dshw_model_2
+
+
+fcst_dshw <- forecast(dshw_model_2, h = 120)
+autoplot(fcst_dshw, include = 220)
+print(summary(fcst_dshw))
+```
+
+
