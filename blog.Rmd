@@ -20,7 +20,7 @@ library(feasts)
 
 Load in Honolii Sea Surface Temperature Data using here package
 
-```{r}
+```{r, results='hide'}
 sst_honolii_1985_2021 <- read.csv(here("data", "sst_honolii_1985_2021.csv" ))
 sst_honolii_1985_2021
 ```
@@ -28,7 +28,7 @@ sst_honolii_1985_2021
 
 Clean Data
 
-```{r}
+```{r, results='hide'}
 sst_honolii_1985_2021 <- sst_honolii_1985_2021 %>% 
   select(time, CRW_SST) %>% 
   mutate(time = as.Date(time))
@@ -36,7 +36,7 @@ sst_honolii_1985_2021
 ```
 
 Determine SST Monthly Means
-```{r}
+```{r, results='hide'}
 sst_honolii_1985_2021_month <- sst_honolii_1985_2021 %>% 
   mutate(time = floor_date(time, "month")) %>% 
   group_by(time) %>% 
@@ -62,9 +62,16 @@ sst_honolii_1985_2021_month_regression <- sst_honolii_1985_2021_month_plot +
 
 sst_honolii_1985_2021_month_regression
 ```
+```{r}
+ols1 <- lm(mean_sst ~ time, data = sst_honolii_1985_2021_month)
+ols1
+summary(ols1)
+```
+
+
 
 Convert dataframe into a time series
-```{r}
+```{r, results='hide'}
 sst_honolii_1985_2021_month_ts <- ts(sst_honolii_1985_2021_month$mean_sst, start = c(1985, 11), frequency = 12)
 
 sst_honolii_1985_2021_month_ts
@@ -84,7 +91,7 @@ as_tsibble(sst_honolii_1985_2021_month_ts) %>%
 ```
 
 
-```{r}
+```{r, results='hide'}
 sst_honolii_1985_2021_month_tsibble <- sst_honolii_1985_2021_month_ts %>% as_tsibble() 
 
 sst_honolii_1985_2021_month_tsibble
@@ -98,7 +105,7 @@ sst_honolii_1985_2021_month_tsibble %>%
 sst_honolii_1985_2021_month_tsibble %>% 
   gg_subseries(value)
 ```
-```{r}
+```{r, results='hide'}
 dcmp <- sst_honolii_1985_2021_month_tsibble %>%
   model(stl = STL(value))
 components(dcmp)
@@ -168,4 +175,29 @@ fcst_arima <- forecast(fit_arima_training, h = 146, find.frequency = TRUE)
 autoplot(fcst_arima, include = 120)
 print(summary(fcst_arima))
 ```
+```{r}
+sst_honolii_2014_2021_month <- sst_honolii_1985_2021_month %>% 
+  filter(time > '2014-11-08')
+
+
+
+
+sst_honolii_2014_2021_month_plot <- ggplot(data = sst_honolii_2014_2021_month, aes(x = time, y = mean_sst)) +
+  geom_line()
+
+sst_honolii_1985_2021_month_plot
+
+sst_honolii_2014_2021_month_regression <- sst_honolii_2014_2021_month_plot +
+  geom_smooth(method="lm", col="black")
+
+sst_honolii_2014_2021_month_regression
+
+```
+```{r}
+ols <- lm(mean_sst ~ time, data = sst_honolii_2014_2021_month)
+ols
+summary(ols)
+```
+
+
 

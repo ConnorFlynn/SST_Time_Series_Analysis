@@ -40,6 +40,7 @@ sst_honolii_1985_2021
 ```
 
 Determine SST Monthly Means
+
 ```{r, results='hide'}
 sst_honolii_1985_2021_month <- sst_honolii_1985_2021 %>% 
   mutate(time = floor_date(time, "month")) %>% 
@@ -94,7 +95,6 @@ mean(predictions$residuals)
 ggplot(predictions) + geom_point(aes(x=mean_sst, y=residuals)) 
 
 ```
-
 
 
 
@@ -161,36 +161,67 @@ training=window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2016
 validation=window(sst_honolii_1985_2021_month_ts, start = c(2016,11), end = c(2021,10))
 ```
 
-DSHW Model
+DSHW Model from the forecast package
+
+The DSHW Model returns forecasts using Taylor's (2003) Double-Seasonal Holt-Winters method.
+  1. period1 = shorter seasonal period. 
+    a. This period is shorter and occurs more often than period 2. It is often set to 4 if period 2 is set to 12 to represent four three month     long seasons in a 12 month year. (These periods do not have to be set to 4 and 12, one just needs to be an integer multiple of the other).
+  2. period2 = longer seasonal period
+  3. alpha, beta, gamma, omega = smoothing parameters (If NULL, the parameter is estimated using least squares.) 
+  4. MAPE = mean average percentage error 
+
+
+DSHW Model Fit
 NOTE try to increase periods without messing up time
 ```{r}
 dshw_model = dshw(training, period1=4, period2=12, h=length(validation))
 MAPE(dshw_model$mean, validation)*100
 
-dshw_model
+summary(dshw_model)
 
 dshw_plot <-plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="DSHW Fit", type='l')
 lines(dshw_model$mean, col="red", lwd=2)
 ```
-NOTE figure out how to expand x axis to show forecast years to 2030
+
+
+
+DSHW Forecast
+
 ```{r}
-dshw_model_forecast = dshw(training, period1=4, period2 = 12, h=240)
-MAPE(dshw_model_forecast$mean, validation)*100
+fcst_dshw <- forecast(dshw_model_forecast, h = 120)
+autoplot(fcst_dshw, include = 220)
+print(summary(fcst_dshw))
 
-dshw_model_forecast
-
-dshw_plot <-plot(sst_honolii_1985_2021_month_ts, col="blue", xlab="Day", ylab="SST", main="DSHW Forecast", type='l')
-lines(dshw_model_forecast$mean, col="red", lwd=2)
 ```
 
-ARIMA 
+
+
+
+ARIMA/SARIMA
+
+ARIMA models contain three things:
+AR (p): autoregressive part of the model. Means that we use p past observations from the timeseries as predictors.
+Differencing (d): Used to transform the timeseries into a stationary one by taking the differences between successive observations at appropriate lags d.
+MA (q): uses q past forecast errors as predictors.
+
+SARIMA adds a seasonal part to the model to give us (p,d,q) (P,D,Q)
+
+P = Seasonal Autoregressive Order(p)
+D = Seasonal Differencing Order(d)
+Q = Seasonal MA Order(q) 
+m = Number of observations per year
+
+auto.arima() - tries many different arima methods and returns the model that fits the best regarding (p,d,q) (P,D,Q)m
+   Example: Best model: ARIMA(1,1,1)(2,1,1)[12]
+
 
 ```{r}
-#arima_training <- window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2018,11))
-
 fit_arima_training <- auto.arima(training, d = 1, D = 1, stepwise = FALSE, approximation = FALSE, trace = TRUE)
 print(summary(fit_arima_training))
 checkresiduals(fit_arima_training)
+
+test_forecast <- forecast(fit_arima_training, h = 120)
+autoplot(test_forecast, include = 120)
 ```
 
 
@@ -235,14 +266,16 @@ Capturing more than one year seasonality (period2=72)
 NOTE the time element of the model changes 
 
 ```{r}
-dshw_model_2 = dshw(sst_honolii_1985_2021_month_ts, period1=4, period2 =72, h = 120)
+dshw_model_2 = dshw(sst_honolii_1985_2021_month_ts, period1=36, period2 =144, h = 420)
 
 dshw_model_2
 
 
-fcst_dshw <- forecast(dshw_model_2, h = 120)
-autoplot(fcst_dshw, include = 220)
+fcst_dshw <- forecast(dshw_model_2, h = 420)
+autoplot(fcst_dshw, include = 420)
 print(summary(fcst_dshw))
+
+checkresiduals(fcst)
 ```
 
-
+TBATS
