@@ -152,4 +152,4 @@ bleaching_threshold <- sst_honolii_1985_2021_plot +
 bleaching_threshold
 ```
 
-From this visualization, we can see that daily sst temperatures in the 5km grid box have surpassed the normal bleaching threshold in 4 warming events over the last 36 years, 3 of which occured in the last 8 years. We can also see that heat tolerant coral, due to the symbiotic algae switch defined above, avoided all the bleaching events. 
+From this visualization, we can see that daily sst temperatures in the 5km grid box have surpassed the normal bleaching threshold in 4 warming events over the last 36 years, 3 of which occurred in the last 8 years. We can also see that heat tolerant coral, due to the symbiotic algae switch defined above, avoided all the bleaching events. 
