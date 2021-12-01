@@ -39,6 +39,12 @@ sst_honolii_1985_2021
 ```
 
 ```{r}
+
+```
+
+
+
+```{r}
 months(sst_honolii_1985_2021$time)
 ```
 

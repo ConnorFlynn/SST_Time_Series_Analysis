@@ -63,6 +63,17 @@ sst_honolii_1985_2021_month_plot <- ggplot(data = sst_honolii_1985_2021_month, a
 sst_honolii_1985_2021_month_plot
 ```
 
+```{r}
+bleaching_threshold <- sst_honolii_1985_2021_month_plot +
+  geom_hline(yintercept = 27.6, color = "red")
+
+bleaching_threshold
+```
+
+
+
+
+
 To estimate the linear relationship between time and mean sea surface temperature, we’ll use lm() to fit a regression model using Ordinary Least Squares (OLS).
 
 ```{r}
@@ -95,7 +106,7 @@ ggplot(data=predictions) + geom_histogram(aes(residuals), bins=25)
 mean(predictions$residuals)
 #1.495545e-14
 
-# variance in residuals against measn_sst
+# variance in residuals against mean_sst
 ggplot(predictions) + geom_point(aes(x=mean_sst, y=residuals)) 
 
 ```

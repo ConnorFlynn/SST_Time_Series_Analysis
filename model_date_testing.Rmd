@@ -42,9 +42,6 @@ mutate(time = as.Date(time))
 sst_honolii_1985_2021
 ```
 
-```{r}
-#months(sst_honolii_1985_2021$time)
-```
 
 
 ```{r}
