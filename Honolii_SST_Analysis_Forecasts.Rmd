@@ -1,0 +1,153 @@
+---
+title: "Honolii_SST_Analysis_Forecasts"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+options(scipen = 999)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(lubridate)
+library(forecast)
+library(MLmetrics)
+library(tsibble)
+library(astsa)
+library(janitor)
+library(feasts)
+library(gt)
+library(modelr)
+library(astsa)
+```
+
+Research Question - Can we use sea surface temperature (sst) data and NOAA's coral bleaching model to:
+  1. Analyze past coral bleaching events off the coast of Honolii, Hawaii for both heat tolerant and non heat tolerant corals
+  2. Predict future coral bleaching events off the coast of Honolii, Hawaii for both heat tolerant and non heat tolerant corals
+
+This exploratory analysis examines Sea Surface Temperature data from the NOAA Coral Reef Watch CoralTemp dataset. CoralTemp is a global sea surface temperature data product used primarily for coral bleaching monitoring. The dataset contains several data products based on 5 geostationary and 3 polar-orbiting satellites. The spatial resolution of the data is 5km with complete daily spatial coverage of the ocean from 1985-04-01 to present. The 5km grid for this analysis encompasses the marine ecosystem off of Honolii, Hawaii. 
+
+First, we downloaded sea surface temperature data; calculated monthly means; and ran a linear regression model using ordinary least squares (OLS) to estimate the linear relationship between time and mean sea surface temperature. 
+
+```{r, results='hide'}
+sst_honolii_1985_2021 <- read.csv(here("data", "sst_honolii_1985_2021.csv" ))
+sst_honolii_1985_2021
+```
+
+
+```{r, results='hide'}
+sst_honolii_1985_2021 <- sst_honolii_1985_2021 %>% 
+  select(time, CRW_SST) %>% 
+  mutate(time = as.Date(time))
+sst_honolii_1985_2021
+```
+
+
+```{r, results='hide'}
+sst_honolii_1985_2021_month <- sst_honolii_1985_2021 %>% 
+  mutate(time = floor_date(time, "month")) %>% 
+  group_by(time) %>% 
+  summarise(mean_sst = mean(CRW_SST))
+
+sst_honolii_1985_2021_month
+```
+
+```{r, results='hide'}
+sst_honolii_1985_2021_month_plot <- ggplot(data = sst_honolii_1985_2021_month, aes(x = time, y = mean_sst)) +
+  geom_line()
+
+sst_honolii_1985_2021_month_plot
+```
+
+```{r}
+sst_honolii_1985_2021_month_regression <- sst_honolii_1985_2021_month_plot +
+  geom_smooth(method="lm", col="black")
+
+sst_honolii_1985_2021_month_regression
+```
+```{r}
+lm(mean_sst ~ time, data = sst_honolii_1985_2021_month) %>% 
+  tidy %>% 
+  gt()
+```
+
+We can see here that there is a positive correlation between time and mean sst. The coefficient on time tells us that for every one unit increase in time, the mean sst increases by 0.00002586144 degrees Celsius. The p value tells us this is statistically significant at 0.04. 
+
+
+
+Now we can check the residuals by plotting a histogram.
+```{r}
+ols <- lm(mean_sst ~ time, data = sst_honolii_1985_2021_month)
+ols
+summary(ols)
+
+predictions <- sst_honolii_1985_2021_month %>% 
+  add_predictions(ols) %>%
+  mutate(residuals = mean_sst-pred)
+
+# histogram
+ggplot(data=predictions) + geom_histogram(aes(residuals), bins=25)
+
+# mean
+mean(predictions$residuals)
+#1.495545e-14
+
+# variance in residuals against mean_sst
+ggplot(predictions) + geom_point(aes(x=mean_sst, y=residuals)) 
+
+```
+
+The residuals seem to be normally distributed.
+
+
+```{r, results='hide'}
+sst_honolii_1985_2021_month_ts <- ts(sst_honolii_1985_2021_month$mean_sst, start = c(1985, 11), frequency = 12)
+
+sst_honolii_1985_2021_month_ts
+```
+
+
+```{r, results='hide'}
+sst_honolii_1985_2021_month_tsibble <- sst_honolii_1985_2021_month_ts %>% as_tsibble() 
+sst_honolii_1985_2021_month_tsibble
+```
+
+Next, we can run a classical decomposition model to analyze seasonality and trend
+
+```{r}
+sst_honolii_1985_2021_month_tsibble %>%
+  model(
+    classical_decomposition(value, type = "additive")
+  ) %>%
+  components() %>%
+  autoplot() +
+  labs(title = "Classical additive decomposition")
+```
+The grey bars on the side of the decomposition plot are there to help you assess how "big" each component is. Since the _y_-axes vary across each plot,  it's hard to compare the magnitude of a trend or a seasonal cycle across plots without these grey bars. All grey bars are of the same magnitude; here, about 250. Thus, when the bar is small relative to the variation shown in a plot, that means that component is quantitatively important in determining overall variation. Here, we can tell that seasonality plays a more important role in overall sst variation compared to trend. 
+
+This marine ecosystem off the Hilo coast of the Big Island is known to house to coral that is showing resilliency toward warming sea surface temperatures caused by climate change. According to NOAA, corals experience stress if water reaches 1°C warmer than the highest expected annual temperature (Glynn and D'Croz, 1990). Thus, the bleaching threshold is defined as 1°C warmer than the maximum monthly mean temperature. To calculate the bleaching threshold, we first calculate the maximum monthly mean (mean sst of the month with the highest sst, for Hawaii this is September). 
+
+```{r}
+sst_honolii_1985_2021_month_tsibble %>% 
+  gg_subseries(value)
+```
+\
+From this visualization we can see the maximum monthly mean (depicted by the blue lines) for September is at 26.6 degrees Celsius. Therefore, we can calculate the bleaching threshold by adding 1 degree Celsius to the maximum monthly mean which gives us 27.6 degrees Celsius. 
+
+Now we can visualize any bleaching events over the last 35 years. 
+```{r, results="hide}
+sst_honolii_1985_2021_plot <- ggplot(data = sst_honolii_1985_2021, aes(x = time, y = CRW_SST)) +
+  geom_line()
+sst_honolii_1985_2021_plot
+```
+
+
+```{r}
+bleaching_threshold <- sst_honolii_1985_2021_plot +
+  geom_hline(yintercept = 27.6, color = "red")
+
+bleaching_threshold
+```
