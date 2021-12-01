@@ -69,9 +69,19 @@ sst_honolii_1985_2021_month_ts <- ts(sst_honolii_1985_2021_month$mean_sst, start
 sst_honolii_1985_2021_month_ts
 ```
 
+
 ```{r}
-training=window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2018,11))
-validation=window(sst_honolii_1985_2021_month_ts, start = c(2018,12), end = c(2021,10))
+sst_honolii_1985_2021_month_ts_plot <- autoplot(sst_honolii_1985_2021_month_ts)
+
+sst_honolii_1985_2021_month_ts_regression <- sst_honolii_1985_2021_month_ts_plot +
+  geom_smooth(method="lm", col="black")
+
+sst_honolii_1985_2021_month_ts_regression
+```
+
+```{r}
+training=window(sst_honolii_1985_2021_month_ts, start = c(1985,11), end = c(2017,11))
+validation=window(sst_honolii_1985_2021_month_ts, start = c(2017,12), end = c(2021,10))
 ```
 
 ```{r}

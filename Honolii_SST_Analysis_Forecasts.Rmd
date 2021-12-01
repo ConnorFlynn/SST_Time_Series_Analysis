@@ -22,15 +22,16 @@ library(feasts)
 library(gt)
 library(modelr)
 library(astsa)
+library(tinytex)
 ```
 
-Research Question - Can we use sea surface temperature (sst) data and NOAA's coral bleaching model to:
+Research Question - Has there been an upward trend in sea surface temperature in the 5km resolution grid box off of the Honolii coast? Can we use sst data, NOAA's coral bleaching model, and forecasting tools to:
   1. Analyze past coral bleaching events off the coast of Honolii, Hawaii for both heat tolerant and non heat tolerant corals
   2. Predict future coral bleaching events off the coast of Honolii, Hawaii for both heat tolerant and non heat tolerant corals
 
 This exploratory analysis examines Sea Surface Temperature data from the NOAA Coral Reef Watch CoralTemp dataset. CoralTemp is a global sea surface temperature data product used primarily for coral bleaching monitoring. The dataset contains several data products based on 5 geostationary and 3 polar-orbiting satellites. The spatial resolution of the data is 5km with complete daily spatial coverage of the ocean from 1985-04-01 to present. The 5km grid for this analysis encompasses the marine ecosystem off of Honolii, Hawaii. 
 
-First, we downloaded sea surface temperature data; calculated monthly means; and ran a linear regression model using ordinary least squares (OLS) to estimate the linear relationship between time and mean sea surface temperature. 
+First, we downloaded sea surface temperature data; calculated monthly means; and ran a linear regression model using ordinary least squares (OLS) to estimate the linear relationship between time and monthly mean sea surface temperature. 
 
 ```{r, results='hide'}
 sst_honolii_1985_2021 <- read.csv(here("data", "sst_honolii_1985_2021.csv" ))
@@ -74,9 +75,7 @@ lm(mean_sst ~ time, data = sst_honolii_1985_2021_month) %>%
   gt()
 ```
 
-We can see here that there is a positive correlation between time and mean sst. The coefficient on time tells us that for every one unit increase in time, the mean sst increases by 0.00002586144 degrees Celsius. The p value tells us this is statistically significant at 0.04. 
-
-
+We can see here that there is a positive correlation between time and mean sst. The coefficient on time tells us that for every one unit increase in time, the mean sst increases by 0.00002586144 degrees Celsius. The p value of 0.04 tells us this is statistically significant. 
 
 Now we can check the residuals by plotting a histogram.
 ```{r}
@@ -126,7 +125,7 @@ sst_honolii_1985_2021_month_tsibble %>%
   autoplot() +
   labs(title = "Classical additive decomposition")
 ```
-The grey bars on the side of the decomposition plot are there to help you assess how "big" each component is. Since the _y_-axes vary across each plot,  it's hard to compare the magnitude of a trend or a seasonal cycle across plots without these grey bars. All grey bars are of the same magnitude; here, about 250. Thus, when the bar is small relative to the variation shown in a plot, that means that component is quantitatively important in determining overall variation. Here, we can tell that seasonality plays a more important role in overall sst variation compared to trend. 
+ Here, we can tell that seasonality plays a more important role in overall sst variation compared to trend. 
 
 This marine ecosystem off the Hilo coast of the Big Island is known to house to coral that is showing resilliency toward warming sea surface temperatures caused by climate change. According to NOAA, corals experience stress if water reaches 1°C warmer than the highest expected annual temperature (Glynn and D'Croz, 1990). Thus, the bleaching threshold is defined as 1°C warmer than the maximum monthly mean temperature. To calculate the bleaching threshold, we first calculate the maximum monthly mean (mean sst of the month with the highest sst, for Hawaii this is September). 
 
@@ -137,8 +136,8 @@ sst_honolii_1985_2021_month_tsibble %>%
 \
 From this visualization we can see the maximum monthly mean (depicted by the blue lines) for September is at 26.6 degrees Celsius. Therefore, we can calculate the bleaching threshold by adding 1 degree Celsius to the maximum monthly mean which gives us 27.6 degrees Celsius. 
 
-Now we can visualize any bleaching events over the last 35 years. 
-```{r, results="hide}
+Now, we can visualize any bleaching events over the last 35 years using daily sst. We can also do more! This marine ecosystem off the Hilo coast of the Big Island is known to house to coral that is showing resiliency toward warming sea surface temperatures caused by climate change. Coral can be heat tolerant for a variety of reasons. This analysis explores the hypothesis that the coral of Honolii reef have the ability to adapt to heat by hosting a symbiont algae that increases their bleaching threshold by approximately 1.5 degree Celsius compared to non heat tolerant coral. Therefore, our heat tolerant coral bleaching threshold is 29.1 degrees Celsius.  
+```{r, results='hide'}
 sst_honolii_1985_2021_plot <- ggplot(data = sst_honolii_1985_2021, aes(x = time, y = CRW_SST)) +
   geom_line()
 sst_honolii_1985_2021_plot
@@ -147,7 +146,10 @@ sst_honolii_1985_2021_plot
 
 ```{r}
 bleaching_threshold <- sst_honolii_1985_2021_plot +
-  geom_hline(yintercept = 27.6, color = "red")
+  geom_hline(yintercept = 27.6, color = "red") + 
+  geom_hline(yintercept = 29.1, color = "blue" )
 
 bleaching_threshold
 ```
+
+From this visualization, we can see that daily sst temperatures in the 5km grid box have surpassed the normal bleaching threshold in 4 warming events over the last 36 years, 3 of which occured in the last 8 years. We can also see that heat tolerant coral, due to the symbiotic algae switch defined above, avoided all the bleaching events. 
