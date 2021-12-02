@@ -1,11 +1,10 @@
 ---
 title: "Honolii_SST_Analysis_Forecasts"
-output:
-  pdf_document: default
-  html_document: default
+output: html_document
+
 ---
 
-```{r setup, echo=FALSE}
+```{r setup, echo=FALSE, message = FALSE, warning = FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 options(scipen = 999)
@@ -178,7 +177,7 @@ The DSHW Model returns forecasts using Taylor's (2003) Double-Seasonal Holt-Wint
   4. MAPE = mean average percentage error 
   
   
-Let's discuss the parameters I chose to put in the model. For the longer period in the model,I chose to break up the 36 years(432 months) into 12 year (144 month) periods. Period 2 = 144. For the shorter period in the model, I chose to separate the data into 36, 4 month periods. Period 1 = 36. Notice, Period 1 & 2 are integer multiples of the other. 
+Let's discuss the parameters I chose to put in the model. For the longer period in the model,I chose to break up the 36 years(432 months) into 9 year (108 month) periods. Period 2 = 108. For the shorter period in the model, I chose to separate the data into 108, 4 month periods. Period 1 = 4. Notice, Period 1 & 2 are integer multiples of the other. The blue lines below indicate the larger periods.
 
 
 ```{r}
