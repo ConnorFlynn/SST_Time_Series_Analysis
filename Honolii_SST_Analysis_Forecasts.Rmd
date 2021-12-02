@@ -23,6 +23,7 @@ library(gt)
 library(modelr)
 library(astsa)
 library(tinytex)
+library(plotly)
 ```
 
 Research Question - Has there been an upward trend in sea surface temperature in the 5km resolution grid box off of the Honolii coast? Can we use sst data, NOAA's coral bleaching model, and forecasting tools to:
@@ -149,7 +150,69 @@ bleaching_threshold <- sst_honolii_1985_2021_plot +
   geom_hline(yintercept = 27.6, color = "red") + 
   geom_hline(yintercept = 29.1, color = "blue" )
 
-bleaching_threshold
+bleaching_threshold_plot <- ggplotly(bleaching_threshold)
+bleaching_threshold_plot
 ```
 
 From this visualization, we can see that daily sst temperatures in the 5km grid box have surpassed the normal bleaching threshold in 4 warming events over the last 36 years, 3 of which occurred in the last 8 years. We can also see that heat tolerant coral, due to the symbiotic algae switch defined above, avoided all the bleaching events. 
+
+This makes intuitive sense, now the concern raises that **if sst keeps rising due to climate change, will the 1.5 degrees Celsius buffer due to the symbiotic algae switch be enough to keep corals from bleaching in the future**. This question calls for forecasting. 
+
+Before we forecast, it is imperative to recognize limitations.
+
+1. These time series forecasting models only worked with monthly mean sst data, therefore not accounting for daily spikes over the bleaching threshold. However, coral does not bleach immediately when sst crosses the threshold. NOAA calculates degree heating weeks (dhw, the number of weeks sst stays above the threshold) to calculate bleaching levels. 
+  i. When dhw is greater than 0 but less than 4 weeks, heat stress is accumulating and coral bleaching is possible. Defined as Bleaching Warning
+  ii. When dhw is equal to or greater than 4 but less than 8 weeks, significant coral bleaching is likely. Defined as Alert Level 1
+  iii. When dhw is equal to or greater than 8 severe coral bleaching and significant coral mortality is likely. Defined as Alert Level 2
+Therefore, forecasting monthly means will allow us to predict Alert Level 1 and Alert Level 2 bleaching events. 
+
+2. Forecasting Models are extremely easy to manipulate. Using the same data set, but changing the date windows or periods can cause extremely positive or negative trends as well as everything in between. "All models are wrong, but some are more useful than others."
+
+DSHW Model from the forecast package
+
+The DSHW Model returns forecasts using Taylor's (2003) Double-Seasonal Holt-Winters method.
+  1. period1 = shorter seasonal period. 
+    a. This period is shorter and occurs more often than period 2. It is often set to 4 if period 2 is set to 12 to represent four three month long seasons in a 12 month year. (These periods do not have to be set to 4 and 12, one just needs to be an integer multiple of the other).
+  2. period2 = longer seasonal period
+  3. alpha, beta, gamma, omega = smoothing parameters (If NULL, the parameter is estimated using least squares.) 
+  4. MAPE = mean average percentage error 
+  
+  
+Let's discuss the parameters I chose to put in the model. For the longer period in the model,I chose to break up the 36 years(432 months) into 12 year (144 month) periods. Period 2 = 144. For the shorter period in the model, I chose to separate the data into 36, 4 month periods. Period 1 = 36. Notice, Period 1 & 2 are integer multiples of the other. 
+
+
+```{r}
+dates_vline <- as.Date(c("1994-11-01", "2003-11-01","2012-11-01"))                 
+dates_vline <- which(sst_honolii_1985_2021_month$time %in% dates_vline)
+
+forecast_period_demo_plot <- sst_honolii_1985_2021_month_plot +
+ geom_vline(xintercept = as.numeric(sst_honolii_1985_2021_month$time[dates_vline]),
+             col = "blue", lwd = 1)
+
+forecast_period_demo_plot
+
+
+```
+
+The entire 36 year (432 month) dataset is divided into 4, 9 year (108 month) periods. Within those 9 year periods, there are 27, 4 month periods. Period 1 = 4, Period 2 = 108
+
+These periods along with the functions default to use least squares to calculate slope is what creates the forecast. 
+
+```{r}
+dshw_model = dshw(sst_honolii_1985_2021_month_ts, period1=4, period2 =108, h = 420)
+fcst_dshw <- forecast(dshw_model, h = 420)
+dshw_forecast_model <- autoplot(fcst_dshw, include = 432) 
+
+dshw_forecast_model
+
+dshw_forecast_model1 <- dshw_forecast_model +
+  geom_hline(yintercept = 27.6, color = "red") + 
+  geom_hline(yintercept = 29.1, color = "blue" )
+
+dshw_forecast_model1
+
+```
+
+
+
+

@@ -290,7 +290,56 @@ fcst_dshw <- forecast(dshw_model_2, h = 420)
 autoplot(fcst_dshw, include = 420)
 print(summary(fcst_dshw))
 
-checkresiduals(fcst)
+checkresiduals(fcst_dshw)
 ```
 
-TBATS
+```{r}
+dshw_model_3 = dshw(sst_honolii_1985_2021_month_ts, period1=4, period2 =108, h = 420)
+
+dshw_model_3
+
+
+fcst_dshw3 <- forecast(dshw_model_3, h = 420)
+autoplot(fcst_dshw3, include = 420)
+print(summary(fcst_dshw3))
+
+checkresiduals(fcst_dshw3)
+```
+
+
+
+
+
+```{r}
+sst_honolii_1985_2021_september <- sst_honolii_1985_2021_month %>% 
+  mutate(month = month(time)) %>% 
+  filter(month == 9)
+
+sst_honolii_1985_2021_september
+```
+
+
+
+
+```{r}
+lm(mean_sst ~ time, data = sst_honolii_1985_2021_september) %>% 
+  tidy %>% 
+  gt()
+```
+
+
+Use the geom_smooth() function with method argument set to lm, which stands for “linear model”, to add the best fit OLS line to the sst_honolii_1985_2021_month_plot
+
+```{r}
+sst_honolii_1985_2021_september_plot <- ggplot(data = sst_honolii_1985_2021_september, aes(x = time, y = mean_sst)) + 
+  geom_point()
+
+sst_honolii_1985_2021_september_plot
+```
+
+```{r}
+sst_honolii_1985_2021_september_regression <- sst_honolii_1985_2021_september_plot +
+  geom_smooth(method="lm", col="black")
+
+sst_honolii_1985_2021_september_regression
+```

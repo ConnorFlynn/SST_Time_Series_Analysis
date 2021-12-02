@@ -177,7 +177,7 @@ print(summary(fcst_arima))
 ```
 ```{r}
 sst_honolii_2014_2021_month <- sst_honolii_1985_2021_month %>% 
-  filter(time > '2014-11-08')
+  filter(time < '2014-11-08')
 
 
 
@@ -190,7 +190,7 @@ sst_honolii_1985_2021_month_plot
 sst_honolii_2014_2021_month_regression <- sst_honolii_2014_2021_month_plot +
   geom_smooth(method="lm", col="black")
 
-sst_honolii_2014_2021_month_regression
+ggplotly(sst_honolii_2014_2021_month_regression)
 
 ```
 ```{r}
