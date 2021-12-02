@@ -294,7 +294,7 @@ checkresiduals(fcst_dshw)
 ```
 
 ```{r}
-dshw_model_3 = dshw(sst_honolii_1985_2021_month_ts, period1=4, period2 =108, h = 420)
+dshw_model_3 = dshw(sst_honolii_1985_2021_month_ts, period1=3, period2 =108, h = 420)
 
 dshw_model_3
 
@@ -343,3 +343,34 @@ sst_honolii_1985_2021_september_regression <- sst_honolii_1985_2021_september_pl
 
 sst_honolii_1985_2021_september_regression
 ```
+```{r}
+sst_1985_1994 <- sst_honolii_1985_2021_month %>% 
+  filter(time < "1994-12-01") 
+
+sst_1985_1994
+
+sst_1985_1994_plot <- ggplot(data = sst_1985_1994, aes(x = time, y = mean_sst)) +
+  geom_line()
+
+sst_1985_1994_plot
+```
+```{r}
+dates_vline_zoom <- as.Date(c("1986-03-01", "1986-07-01","1986-11-01",
+                              "1987-03-01", "1987-07-01","1987-11-01",
+                              "1988-03-01", "1988-07-01","1988-11-01",
+                              "1989-03-01", "1989-07-01","1989-11-01",
+                              "1990-03-01", "1990-07-01","1990-11-01",
+                              "1991-03-01", "1991-07-01","1991-11-01",
+                              "1992-03-01", "1992-07-01","1992-11-01",
+                              "1993-03-01", "1993-07-01","1993-11-01",
+                              "1994-03-01", "1994-07-01","1994-11-01"
+                              ))                 
+dates_vline_zoom <- which(sst_1985_1994$time %in% dates_vline_zoom)
+
+forecast_period_demo_plot1 <- sst_1985_1994_plot +
+ geom_vline(xintercept = as.numeric(sst_1985_1994$time[dates_vline_zoom]),
+             col = "yellow", lwd = 1)
+
+forecast_period_demo_plot1
+```
+

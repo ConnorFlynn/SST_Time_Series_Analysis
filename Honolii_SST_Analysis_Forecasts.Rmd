@@ -1,7 +1,13 @@
 ---
-title: "Honolii_SST_Analysis_Forecasts"
-output: html_document
-
+title: A Statistical Analysis of Sea Surface Temperature Change Over Time off the Coast Of Honoli'i
+  Hawaiʻi
+always_allow_html: true
+output: 
+  pdf_document:
+    toc: no
+  html_document: 
+    toc: no 
+    df_print: paged
 ---
 
 ```{r setup, echo=FALSE, message = FALSE, warning = FALSE}
@@ -25,65 +31,77 @@ library(tinytex)
 library(plotly)
 ```
 
-Research Question - Has there been an upward trend in sea surface temperature in the 5km resolution grid box off of the Honolii coast? Can we use sst data, NOAA's coral bleaching model, and forecasting tools to:
-  1. Analyze past coral bleaching events off the coast of Honolii, Hawaii for both heat tolerant and non heat tolerant corals
-  2. Predict future coral bleaching events off the coast of Honolii, Hawaii for both heat tolerant and non heat tolerant corals
 
-This exploratory analysis examines Sea Surface Temperature data from the NOAA Coral Reef Watch CoralTemp dataset. CoralTemp is a global sea surface temperature data product used primarily for coral bleaching monitoring. The dataset contains several data products based on 5 geostationary and 3 polar-orbiting satellites. The spatial resolution of the data is 5km with complete daily spatial coverage of the ocean from 1985-04-01 to present. The 5km grid for this analysis encompasses the marine ecosystem off of Honolii, Hawaii. 
+
+Research Question :
+Has there been an upward trend in sea surface temperature in the 5km resolution grid box off of the Honoli'i coast? Can we use sst data, NOAA's coral bleaching model, and forecasting tools to:
+
+  1. **Analyze past coral bleaching events** off the coast of Honoli'i, Hawaiʻi for both heat tolerant and non heat tolerant corals
+  2. **Predict future coral bleaching events** off the coast of Honoli'i, Hawaiʻi for both heat tolerant and non heat tolerant corals
+
+This exploratory analysis examines Sea Surface Temperature data from the NOAA Coral Reef Watch CoralTemp dataset. CoralTemp is a global sea surface temperature data product used primarily for coral bleaching monitoring. The dataset contains several data products based on 5 geostationary and 3 polar-orbiting satellites. The spatial resolution of the data is 5km with complete daily spatial coverage of the ocean from 1985-04-01 to present. The 5km grid for this analysis encompasses the marine ecosystem off of Honoli'i, Hawaiʻi. 
 
 First, we downloaded sea surface temperature data; calculated monthly means; and ran a linear regression model using ordinary least squares (OLS) to estimate the linear relationship between time and monthly mean sea surface temperature. 
 
 ```{r, results='hide'}
-sst_honolii_1985_2021 <- read.csv(here("data", "sst_honolii_1985_2021.csv" ))
-sst_honolii_1985_2021
+sst_Honolii_1985_2021 <- read.csv(here("data", "sst_Honolii_1985_2021.csv" ))
+sst_Honolii_1985_2021
 ```
 
 
 ```{r, results='hide'}
-sst_honolii_1985_2021 <- sst_honolii_1985_2021 %>% 
+sst_Honolii_1985_2021 <- sst_Honolii_1985_2021 %>% 
   select(time, CRW_SST) %>% 
   mutate(time = as.Date(time))
-sst_honolii_1985_2021
+sst_Honolii_1985_2021
 ```
 
 
 ```{r, results='hide'}
-sst_honolii_1985_2021_month <- sst_honolii_1985_2021 %>% 
+sst_Honolii_1985_2021_month <- sst_Honolii_1985_2021 %>% 
   mutate(time = floor_date(time, "month")) %>% 
   group_by(time) %>% 
   summarise(mean_sst = mean(CRW_SST))
 
-sst_honolii_1985_2021_month
+sst_Honolii_1985_2021_month
 ```
 
-```{r, results='hide'}
-sst_honolii_1985_2021_month_plot <- ggplot(data = sst_honolii_1985_2021_month, aes(x = time, y = mean_sst)) +
+```{r, results='hide', include=FALSE}
+sst_Honolii_1985_2021_month_plot <- ggplot(data = sst_Honolii_1985_2021_month, aes(x = time, y = mean_sst)) +
   geom_line()
 
-sst_honolii_1985_2021_month_plot
+sst_Honolii_1985_2021_month_plot
 ```
 
 ```{r}
-sst_honolii_1985_2021_month_regression <- sst_honolii_1985_2021_month_plot +
-  geom_smooth(method="lm", col="black")
+sst_Honolii_1985_2021_month_regression <- sst_Honolii_1985_2021_month_plot +
+  geom_smooth(method="lm", col="black") +
+  labs(title = "Monthly Mean SST for Honoli'i Hawaiʻi from 1985-2021", hjust = 0.5) +
+  labs(x = "Time") +
+  labs(y = "SST in Degrees Celsius") +
+  theme(plot.title = element_text(hjust = 0.5))
 
-sst_honolii_1985_2021_month_regression
+sst_Honolii_1985_2021_month_regression
 ```
+
+
 ```{r}
-lm(mean_sst ~ time, data = sst_honolii_1985_2021_month) %>% 
+lm(mean_sst ~ time, data = sst_Honolii_1985_2021_month) %>% 
   tidy %>% 
   gt()
 ```
+
+
 
 We can see here that there is a positive correlation between time and mean sst. The coefficient on time tells us that for every one unit increase in time, the mean sst increases by 0.00002586144 degrees Celsius. The p value of 0.04 tells us this is statistically significant. 
 
 Now we can check the residuals by plotting a histogram.
 ```{r}
-ols <- lm(mean_sst ~ time, data = sst_honolii_1985_2021_month)
-ols
-summary(ols)
+ols <- lm(mean_sst ~ time, data = sst_Honolii_1985_2021_month)
+# ols
+# summary(ols)
 
-predictions <- sst_honolii_1985_2021_month %>% 
+predictions <- sst_Honolii_1985_2021_month %>% 
   add_predictions(ols) %>%
   mutate(residuals = mean_sst-pred)
 
@@ -91,7 +109,7 @@ predictions <- sst_honolii_1985_2021_month %>%
 ggplot(data=predictions) + geom_histogram(aes(residuals), bins=25)
 
 # mean
-mean(predictions$residuals)
+# mean(predictions$residuals)
 #1.495545e-14
 
 # variance in residuals against mean_sst
@@ -103,21 +121,21 @@ The residuals seem to be normally distributed.
 
 
 ```{r, results='hide'}
-sst_honolii_1985_2021_month_ts <- ts(sst_honolii_1985_2021_month$mean_sst, start = c(1985, 11), frequency = 12)
+sst_Honolii_1985_2021_month_ts <- ts(sst_Honolii_1985_2021_month$mean_sst, start = c(1985, 11), frequency = 12)
 
-sst_honolii_1985_2021_month_ts
+sst_Honolii_1985_2021_month_ts
 ```
 
 
 ```{r, results='hide'}
-sst_honolii_1985_2021_month_tsibble <- sst_honolii_1985_2021_month_ts %>% as_tsibble() 
-sst_honolii_1985_2021_month_tsibble
+sst_Honolii_1985_2021_month_tsibble <- sst_Honolii_1985_2021_month_ts %>% as_tsibble() 
+sst_Honolii_1985_2021_month_tsibble
 ```
 
-Next, we can run a classical decomposition model to analyze seasonality and trend
+Next, we can run a classical decomposition model to analyze seasonality and trend.
 
 ```{r}
-sst_honolii_1985_2021_month_tsibble %>%
+sst_Honolii_1985_2021_month_tsibble %>%
   model(
     classical_decomposition(value, type = "additive")
   ) %>%
@@ -125,92 +143,156 @@ sst_honolii_1985_2021_month_tsibble %>%
   autoplot() +
   labs(title = "Classical additive decomposition")
 ```
- Here, we can tell that seasonality plays a more important role in overall sst variation compared to trend. 
 
-This marine ecosystem off the Hilo coast of the Big Island is known to house to coral that is showing resilliency toward warming sea surface temperatures caused by climate change. According to NOAA, corals experience stress if water reaches 1°C warmer than the highest expected annual temperature (Glynn and D'Croz, 1990). Thus, the bleaching threshold is defined as 1°C warmer than the maximum monthly mean temperature. To calculate the bleaching threshold, we first calculate the maximum monthly mean (mean sst of the month with the highest sst, for Hawaii this is September). 
+
+Here, we can tell that seasonality plays a more important role in overall sst variation compared to trend. 
+
+According to NOAA, **corals experience stress if water reaches 1°C warmer than the highest expected annual temperature **(Glynn and D'Croz, 1990). Thus, the bleaching threshold is defined as 1°C warmer than the maximum monthly mean temperature. To calculate the bleaching threshold, we first calculate the maximum monthly mean (mean sst of the month with the highest sst). In Hawaiʻi this is September. 
 
 ```{r}
-sst_honolii_1985_2021_month_tsibble %>% 
+sst_Honolii_1985_2021_month_tsibble %>% 
   gg_subseries(value)
 ```
-\
-From this visualization we can see the maximum monthly mean (depicted by the blue lines) for September is at 26.6 degrees Celsius. Therefore, we can calculate the bleaching threshold by adding 1 degree Celsius to the maximum monthly mean which gives us 27.6 degrees Celsius. 
 
-Now, we can visualize any bleaching events over the last 35 years using daily sst. We can also do more! This marine ecosystem off the Hilo coast of the Big Island is known to house to coral that is showing resiliency toward warming sea surface temperatures caused by climate change. Coral can be heat tolerant for a variety of reasons. This analysis explores the hypothesis that the coral of Honolii reef have the ability to adapt to heat by hosting a symbiont algae that increases their bleaching threshold by approximately 1.5 degree Celsius compared to non heat tolerant coral. Therefore, our heat tolerant coral bleaching threshold is 29.1 degrees Celsius.  
-```{r, results='hide'}
-sst_honolii_1985_2021_plot <- ggplot(data = sst_honolii_1985_2021, aes(x = time, y = CRW_SST)) +
+From the visualization above, we can see the maximum monthly mean (depicted by the blue line) for September is at 26.6 degrees Celsius. Therefore, we can calculate the bleaching threshold by adding 1 degree Celsius to the maximum monthly mean which gives us 27.6 degrees Celsius. 
+
+Now, we can visualize any bleaching events over the last 35 years using daily sst. We can also do more! **This marine ecosystem off the Hilo coast of the Big Island is known to house to coral that is showing resiliency toward warming sea surface temperatures caused by climate change**. Coral can be heat tolerant for a variety of reasons. This analysis explores the hypothesis that the coral of Honoli'i reef have the ability to adapt to heat by hosting a symbiont algae that increases their bleaching threshold by approximately 1.5 degree Celsius compared to non heat tolerant coral. Therefore, our heat tolerant coral bleaching threshold is 29.1 degrees Celsius.  
+
+
+```{r, results='hide', include=FALSE}
+sst_Honolii_1985_2021_plot <- ggplot(data = sst_Honolii_1985_2021, aes(x = time, y = CRW_SST)) +
   geom_line()
-sst_honolii_1985_2021_plot
+sst_Honolii_1985_2021_plot
 ```
 
 
 ```{r}
-bleaching_threshold <- sst_honolii_1985_2021_plot +
+bleaching_threshold <- sst_Honolii_1985_2021_plot +
   geom_hline(yintercept = 27.6, color = "red") + 
-  geom_hline(yintercept = 29.1, color = "blue" )
+  geom_hline(yintercept = 29.1, color = "blue" ) +
+  annotate(geom="text", x = as.Date("2003-09-01"), 
+           y = 27.7, label = "Bleaching Threshold for Non Heat Tolerant Coral", fontface="bold", colour='red') +
+  annotate(geom="text", x = as.Date("2002-09-01"), 
+           y = 29.2, label = "Bleaching Threshold for Heat Tolerant Coral", fontface="bold", colour='turquoise4') 
 
 bleaching_threshold_plot <- ggplotly(bleaching_threshold)
 bleaching_threshold_plot
 ```
 
-From this visualization, we can see that daily sst temperatures in the 5km grid box have surpassed the normal bleaching threshold in 4 warming events over the last 36 years, 3 of which occurred in the last 8 years. We can also see that heat tolerant coral, due to the symbiotic algae switch defined above, avoided all the bleaching events. 
+From this visualization, we can see that daily sst temperatures in the 5km grid box have surpassed the normal bleaching threshold in 4 warming events over the last 36 years, 3 of which occurred in the last 8 years. We can also see that heat tolerant coral, due to the symbiotic algae switch defined above, avoided any bleaching events. 
 
-This makes intuitive sense, now the concern raises that **if sst keeps rising due to climate change, will the 1.5 degrees Celsius buffer due to the symbiotic algae switch be enough to keep corals from bleaching in the future**. This question calls for forecasting. 
+This makes intuitive sense, now the concern raises that **if sst keeps rising due to climate change, will the 1.5 degrees Celsius buffer due to the symbiotic algae switch be enough to keep heat tolerant corals from bleaching in the future?**. This question calls for forecasting. 
 
 Before we forecast, it is imperative to recognize limitations.
 
 1. These time series forecasting models only worked with monthly mean sst data, therefore not accounting for daily spikes over the bleaching threshold. However, coral does not bleach immediately when sst crosses the threshold. NOAA calculates degree heating weeks (dhw, the number of weeks sst stays above the threshold) to calculate bleaching levels. 
   i. When dhw is greater than 0 but less than 4 weeks, heat stress is accumulating and coral bleaching is possible. Defined as Bleaching Warning
   ii. When dhw is equal to or greater than 4 but less than 8 weeks, significant coral bleaching is likely. Defined as Alert Level 1
-  iii. When dhw is equal to or greater than 8 severe coral bleaching and significant coral mortality is likely. Defined as Alert Level 2
+  iii. When dhw is equal to or greater than 8 weeks, severe coral bleaching and significant coral mortality is likely. Defined as Alert Level 2
+
 Therefore, forecasting monthly means will allow us to predict Alert Level 1 and Alert Level 2 bleaching events. 
 
 2. Forecasting Models are extremely easy to manipulate. Using the same data set, but changing the date windows or periods can cause extremely positive or negative trends as well as everything in between. "All models are wrong, but some are more useful than others."
 
-DSHW Model from the forecast package
+**DSHW Model from the Forecast package**
 
 The DSHW Model returns forecasts using Taylor's (2003) Double-Seasonal Holt-Winters method.
-  1. period1 = shorter seasonal period. 
-    a. This period is shorter and occurs more often than period 2. It is often set to 4 if period 2 is set to 12 to represent four three month long seasons in a 12 month year. (These periods do not have to be set to 4 and 12, one just needs to be an integer multiple of the other).
-  2. period2 = longer seasonal period
+
+Here are the parameters that go into the model:  
+ 
+  1. period1 = shorter seasonal period. Demonstrates seasonality
+    i. This period is shorter and occurs more often than period 2. It is often set to 4 if period 2 is set to 12 to represent four three month long seasons in a 12 month year. (These periods do not have to be set to 4 and 12, one just needs to be an integer multiple of the other).
+ 
+  2. period2 = longer seasonal period. Demonstrates cyclicality
+ 
   3. alpha, beta, gamma, omega = smoothing parameters (If NULL, the parameter is estimated using least squares.) 
-  4. MAPE = mean average percentage error 
   
+
   
-Let's discuss the parameters I chose to put in the model. For the longer period in the model,I chose to break up the 36 years(432 months) into 9 year (108 month) periods. Period 2 = 108. For the shorter period in the model, I chose to separate the data into 108, 4 month periods. Period 1 = 4. Notice, Period 1 & 2 are integer multiples of the other. The blue lines below indicate the larger periods.
+Let's discuss the parameters I chose to put in the model. For the longer period in the model, I chose to break up the 36 years(432 months) into 9 year (108 month) periods. Period 2 = 108. Let's visualize this:
 
 
 ```{r}
 dates_vline <- as.Date(c("1994-11-01", "2003-11-01","2012-11-01"))                 
-dates_vline <- which(sst_honolii_1985_2021_month$time %in% dates_vline)
+dates_vline <- which(sst_Honolii_1985_2021_month$time %in% dates_vline)
 
-forecast_period_demo_plot <- sst_honolii_1985_2021_month_plot +
- geom_vline(xintercept = as.numeric(sst_honolii_1985_2021_month$time[dates_vline]),
-             col = "blue", lwd = 1)
+forecast_period_demo_plot <- sst_Honolii_1985_2021_month_plot +
+ geom_vline(xintercept = as.numeric(sst_Honolii_1985_2021_month$time[dates_vline]),
+             col = "blue", lwd = 0.5)
 
 forecast_period_demo_plot
 
 
 ```
 
-The entire 36 year (432 month) dataset is divided into 4, 9 year (108 month) periods. Within those 9 year periods, there are 27, 4 month periods. Period 1 = 4, Period 2 = 108
 
-These periods along with the functions default to use least squares to calculate slope is what creates the forecast. 
+For the shorter period in the model, I chose to break up the 36 years(432 months) into 4 month periods. Period 1 = 4. Let's visualize through zooming into our first 9 year period (1984-1994) and plotting vertical lines demonstrating 4 month periods.
+
 
 ```{r}
-dshw_model = dshw(sst_honolii_1985_2021_month_ts, period1=4, period2 =108, h = 420)
+sst_1985_1994 <- sst_Honolii_1985_2021_month %>% 
+  filter(time < "1994-12-01") 
+
+sst_1985_1994_plot <- ggplot(data = sst_1985_1994, aes(x = time, y = mean_sst)) +
+  geom_line()
+
+dates_vline_zoom <- as.Date(c("1986-03-01", "1986-07-01","1986-11-01",
+                              "1987-03-01", "1987-07-01","1987-11-01",
+                              "1988-03-01", "1988-07-01","1988-11-01",
+                              "1989-03-01", "1989-07-01","1989-11-01",
+                              "1990-03-01", "1990-07-01","1990-11-01",
+                              "1991-03-01", "1991-07-01","1991-11-01",
+                              "1992-03-01", "1992-07-01","1992-11-01",
+                              "1993-03-01", "1993-07-01","1993-11-01",
+                              "1994-03-01", "1994-07-01","1994-11-01"
+                              ))                 
+dates_vline_zoom <- which(sst_1985_1994$time %in% dates_vline_zoom)
+
+forecast_period_demo_plot1 <- sst_1985_1994_plot +
+ geom_vline(xintercept = as.numeric(sst_1985_1994$time[dates_vline_zoom]),
+             col = "yellow", lwd = 0.5)
+
+forecast_period_demo_plot1
+```
+
+
+The entire 36 year (432 month) dataset is divided into 4, 9 year (108 month) periods. Within those 9 year periods, there are 27, 4 month periods. Period 1 = 4, Period 2 = 108
+
+These periods, along with functions that default to use least squares to calculate slope, are what creates the forecast. 
+
+```{r}
+dshw_model = dshw(sst_Honolii_1985_2021_month_ts, period1=4, period2 =108, h = 420)
 fcst_dshw <- forecast(dshw_model, h = 420)
 dshw_forecast_model <- autoplot(fcst_dshw, include = 432) 
 
-dshw_forecast_model
+
 
 dshw_forecast_model1 <- dshw_forecast_model +
   geom_hline(yintercept = 27.6, color = "red") + 
-  geom_hline(yintercept = 29.1, color = "blue" )
+  geom_hline(yintercept = 29.1, color = "blue" ) +  
+  annotate(geom="text", x = 5, 
+           y = 27.7, label = "Bleaching Threshold for Non Heat Tolerant Coral", fontface="bold", colour='red') +
+  annotate(geom="text", x = 5, 
+           y = 29.2, label = "Bleaching Threshold for Heat Tolerant Coral", fontface="bold", colour='turquoise4') +
+  labs(title = "DSHW Forecast of Mean Monthly SST for Honoli'i Hawaiʻi from 1985-2056", hjust = 0.5) +
+  labs(x = "Time") +
+  labs(y = "SST in Degrees Celsius") +
+  theme(plot.title = element_text(hjust = 0.5))
 
 dshw_forecast_model1
 
 ```
+
+
+Another challenge with the forecast, is the conversion of our time column into a single digit integer that represents time. This is due to inputting 108 months into period 2 instead of 12 months. This model doesn't recognize 108 month cycles as time, however, I felt this was the only way to capture cyclicality in periods greater than one year. 
+
+In the forecast visualized above, we have observed monthly mean sst of our grid box from 1985 - 2021 shown by the black line. The blue line demonstrates forecasted mean sst of our grid box from 2021 - 2056. Based on the forecast, we see that non heat tolerant corals will be facing severe bleaching events in the next 35 years. However, heat tolerant coral avoids any severe bleaching due to it's 1.5 degree Celsius buffer. 
+
+Note - I also ran the same model with Period 1 = 3 (representing 4 seasons per year) and Period 1 = 12 (representing yearly seasonality), and the results from the forecast were nearly identical.
+
+Thank you for reviewing this statistical analysis, there is a much more comprehensive r markdown file on my Github under https://github.com/ConnorFlynn/SST_Time_Series_Analysis
+
+
 
 
 
